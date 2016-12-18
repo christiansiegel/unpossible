@@ -2,7 +2,7 @@
 #include <Keyboard.h>
 #include <Gamepad.h>
 
-const float PLAY_ANGLE_FULL_LOCK = 60.0 / 180.0;  // ±60° is full lock 
+constexpr float PLAY_ANGLE_FULL_LOCK = 60.0 / 180.0;  // ±60° is full lock 
 
 const int LED_TOP_FAR_LEFT = 3;
 const int LED_TOP_LEFT = 4;
@@ -53,52 +53,41 @@ void setup_gpios() {
   pinMode(LED_CENTER_RIGHT, OUTPUT);
 }
 
-void get_angles(float &x_angle, float &y_angle, float &z_angle) {
+void read_accelerometer_calibrated(float &x_val, float &y_val, float &z_val) {
   // Accelerometer Readings
   int x,y,z;   
   adxl.readAccel(&x, &y, &z);
 
   // Calibrate values
-  float x_val = (x - 2.5)/33.5;
-  float y_val = (y - 0.0)/34.0;
-  float z_val = (z + 4.0)/32.0;
+  x_val = (x - 2.5)/33.5;
+  y_val = (y - 0.0)/34.0;
+  z_val = (z + 4.0)/32.0;
+}
 
-  // Calculate angles
-  x_angle = atan(y_val / z_val) * 57.2958;
-  if(z_val < 0) 
-    x_angle -= 90;
-  else 
-    x_angle += 90;
+float get_steering_angle() {
+  // Get calibrated accelerometer values
+  float x, y, z;
+  read_accelerometer_calibrated(x, y, z);
 
-  y_angle = atan(-z_val / x_val) * 57.2958;
-  if(x_val < 0) 
-    y_angle -= 90;
-  else 
-    y_angle += 90;
+  // Calculate angle about z-axis with four-quadrant inverse tangent
+  float angle = atan2(x ,-y);
 
-  z_angle = atan(y_val / x_val) * 57.2958;
-  if(x_val < 0) 
-    z_angle -= 90;
-  else 
-    z_angle += 90;
+  // Limit steering angle
+  angle /= PLAY_ANGLE_FULL_LOCK; 
+  if(angle > PI) angle = PI;
+  if(angle < -PI) angle = -PI;
 
-  // Scale to -1..1
-  x_angle /= 180.0;
-  y_angle /= 180.0;
-  z_angle /= 180.0;
-
-  // Debug print
-  /*Serial.print(x_angle);
-  Serial.print(", ");
-  Serial.print(y_angle);
-  Serial.print(", ");
-  Serial.println(z_angle);*/
+  // Scale to [-1, 1]
+  return angle / PI;
 }
 
 void loop() {
-  // Read button state
+  // Get button state
   int buttonState = !digitalRead(BUTTON_PIN);
-  
+
+  // Get controller steering angle
+  float angle = get_steering_angle(); 
+
   digitalWrite(LED_TOP_FAR_LEFT, buttonState);
   digitalWrite(LED_TOP_LEFT, buttonState);
   digitalWrite(LED_BOTTOM_FAR_LEFT, buttonState);
@@ -110,19 +99,7 @@ void loop() {
   digitalWrite(LED_CENTER_LEFT, buttonState);
   digitalWrite(LED_CENTER_RIGHT, buttonState);
 
-  // Read accelerometer angles
-  float x, y, z;
-  get_angles(x, y, z);
-
-  // Scale play angle
-  float play_angle = z / PLAY_ANGLE_FULL_LOCK;
-  if(play_angle > 1) {
-    play_angle = 1;
-  } else if(play_angle < -1) {
-    play_angle = -1;
-  }
-
   // Set gamepad values:
-  gp.setLeftXaxis(play_angle * 127.0);
+  gp.setLeftXaxis(angle * 127.0);
   gp.setButtonState(0, buttonState);
 }
