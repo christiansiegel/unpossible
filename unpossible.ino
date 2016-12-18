@@ -25,9 +25,6 @@ ADXL345 adxl = ADXL345(10);
 Gamepad gp;
 
 void setup() {
-  //Serial.begin(9600);  
-  //Keyboard.begin();  
-
   setup_gpios();
   setup_accelerometer();
 }
@@ -59,16 +56,12 @@ void read_accelerometer_calibrated(float &x_val, float &y_val, float &z_val) {
   adxl.readAccel(&x, &y, &z);
 
   // Calibrate values
-  x_val = (x - 2.5)/33.5;
+  x_val = (x - 20)/33.5; //-2.5
   y_val = (y - 0.0)/34.0;
   z_val = (z + 4.0)/32.0;
 }
 
-float get_steering_angle() {
-  // Get calibrated accelerometer values
-  float x, y, z;
-  read_accelerometer_calibrated(x, y, z);
-
+float get_steering_angle(float x, float y) {
   // Calculate angle about z-axis with four-quadrant inverse tangent
   float angle = atan2(x ,-y);
 
@@ -81,25 +74,86 @@ float get_steering_angle() {
   return angle / PI;
 }
 
+bool is_in_playing_position(float y, float z) {
+  // Calculate angle about x-axis with four-quadrant inverse tangent
+  float angle = atan2(y ,z);
+
+  // Not flat on table
+  return abs(angle) > PI/6;
+}
+
+void blink_in_direction(float angle) {
+  static long lastIntervalMillis = 0;
+  if(lastIntervalMillis + 75 < millis()) {
+    lastIntervalMillis = millis();
+
+    static int row = 2;
+    if(angle < 0) {
+      if(--row < 0) row = 4;
+    }
+    else {
+      if(++row > 4) row = 0;
+    }
+  
+    digitalWrite(LED_TOP_FAR_LEFT, row == 0);
+    digitalWrite(LED_BOTTOM_FAR_LEFT, row == 0);
+    
+    digitalWrite(LED_TOP_LEFT, row == 1);
+    digitalWrite(LED_BOTTOM_LEFT, row == 1);
+  
+    digitalWrite(LED_CENTER_LEFT, row == 2);
+    digitalWrite(LED_CENTER_RIGHT, row == 2);
+    
+    digitalWrite(LED_BOTTOM_RIGHT, row == 3);
+    digitalWrite(LED_TOP_RIGHT, row == 3);
+    
+    digitalWrite(LED_TOP_FAR_RIGHT, row == 4);
+    digitalWrite(LED_BOTTOM_FAR_RIGHT, row == 4);
+  }
+}
+
+void set_all_leds(boolean value) {
+  digitalWrite(LED_TOP_FAR_LEFT, value);
+  digitalWrite(LED_BOTTOM_FAR_LEFT, value);
+  
+  digitalWrite(LED_TOP_LEFT, value);
+  digitalWrite(LED_BOTTOM_LEFT, value);
+
+  digitalWrite(LED_CENTER_LEFT, value);
+  digitalWrite(LED_CENTER_RIGHT, value);
+  
+  digitalWrite(LED_BOTTOM_RIGHT, value);
+  digitalWrite(LED_TOP_RIGHT, value);
+
+  digitalWrite(LED_TOP_FAR_RIGHT, value);
+  digitalWrite(LED_BOTTOM_FAR_RIGHT, value);
+}
+
 void loop() {
   // Get button state
   int buttonState = !digitalRead(BUTTON_PIN);
 
-  // Get controller steering angle
-  float angle = get_steering_angle(); 
+  // Get calibrated accelerometer values
+  float x, y, z;
+  read_accelerometer_calibrated(x, y, z);
 
-  digitalWrite(LED_TOP_FAR_LEFT, buttonState);
-  digitalWrite(LED_TOP_LEFT, buttonState);
-  digitalWrite(LED_BOTTOM_FAR_LEFT, buttonState);
-  digitalWrite(LED_BOTTOM_LEFT, buttonState);
-  digitalWrite(LED_TOP_FAR_RIGHT, buttonState);
-  digitalWrite(LED_TOP_RIGHT, buttonState);
-  digitalWrite(LED_BOTTOM_FAR_RIGHT, buttonState);
-  digitalWrite(LED_BOTTOM_RIGHT, buttonState);
-  digitalWrite(LED_CENTER_LEFT, buttonState);
-  digitalWrite(LED_CENTER_RIGHT, buttonState);
+  // Get controller steering angle
+  float angle = get_steering_angle(x, y); 
+
+  // Get if controller is in playing position and not just lying around
+  bool playing = is_in_playing_position(y, z);
+
+  if(playing) {
+    if(abs(angle) > 0.2) {
+      blink_in_direction(angle);
+    } else {
+      set_all_leds(HIGH);
+    }
+  } else {
+    set_all_leds(LOW);
+  }
 
   // Set gamepad values:
-  gp.setLeftXaxis(angle * 127.0);
+  gp.setLeftXaxis(playing ? angle * -127.0 : 0);
   gp.setButtonState(0, buttonState);
 }
