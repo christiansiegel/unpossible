@@ -4,20 +4,20 @@
 
 constexpr float PLAY_ANGLE_FULL_LOCK = 60.0 / 180.0;  // ±60° is full lock 
 
-const int LED_TOP_FAR_LEFT = 3;
-const int LED_TOP_LEFT = 4;
+const int LED_TOP_FAR_LEFT = A3;
+const int LED_TOP_LEFT = 7;
 
-const int LED_BOTTOM_FAR_LEFT = 5;
-const int LED_BOTTOM_LEFT = 6;
+const int LED_BOTTOM_FAR_LEFT = 6;
+const int LED_BOTTOM_LEFT = 9;
 
-const int LED_TOP_FAR_RIGHT = 7;
-const int LED_TOP_RIGHT = 8;
+const int LED_TOP_FAR_RIGHT = A0;
+const int LED_TOP_RIGHT = 4;
 
-const int LED_BOTTOM_FAR_RIGHT = 9;
-const int LED_BOTTOM_RIGHT = A0;
+const int LED_BOTTOM_FAR_RIGHT = A2;
+const int LED_BOTTOM_RIGHT = 3;
 
-const int LED_CENTER_LEFT = A2;
-const int LED_CENTER_RIGHT = A3;
+const int LED_CENTER_LEFT = 8;
+const int LED_CENTER_RIGHT = 5;
 
 const int BUTTON_PIN = 2;
 
