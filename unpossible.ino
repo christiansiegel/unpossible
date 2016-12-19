@@ -5,6 +5,12 @@
 
 constexpr float PLAY_ANGLE_FULL_LOCK = 60.0 / 180.0;  // ±60° is full lock 
 
+const long NORMAL_PERIOD = 10000; // ms
+const long NORMAL_PERIOD_VARIANCE = 5000; // ms 
+
+const long REVERSE_PERIOD = 5000; // ms
+const long REVERSE_PERIOD_VARIANCE = 2500; // ms
+
 const int LED_TOP_FAR_LEFT = A3;
 const int LED_TOP_LEFT = 7;
 
@@ -27,8 +33,7 @@ Gamepad gp;
 
 void setup() {
   Serial.begin(9600); 
-  Keyboard.begin();
-  
+    
   setup_gpios();
   setup_accelerometer();
   randomSeed(analogRead(A1));
@@ -173,56 +178,30 @@ void set_all_leds(boolean value) {
   SoftPWMSet(LED_BOTTOM_FAR_RIGHT, value ? 255 : 0);
 }
 
-
 void loop() {
-  // Get button state
-  int buttonState = !digitalRead(BUTTON_PIN);
-
-  // Get calibrated accelerometer values
-  float x, y, z;
-  read_accelerometer_calibrated(x, y, z);
-
-  // Get controller steering angle
-  float angle = get_steering_angle(x, y); 
-
-  // Get if controller is in playing position and not just lying around
-  bool playing = is_in_playing_position(y, z);
-
-  if(playing) {
-    if(abs(angle) > 0.2) {
-      blink_in_direction(angle);
-    } else {
-      set_all_leds(HIGH);
-    }
-
-    // Set gamepad axis:
-    gp.setLeftXaxis(angle * 127.0);
-  } else {
-    set_all_leds(LOW);
-  }
-
-  // Set gamepad button
-  gp.setButtonState(0, buttonState);
-
-  if(buttonState) 
-    Keyboard.press(KEY_RETURN);
-  else
-    Keyboard.releaseAll();
-}
-
-/*
-const long NORMAL_PERIOD = 10000; // ms
-const long NORMAL_PERIOD_VARIANCE = 5000; // ms 
-
-const long REVERSE_PERIOD = 5000; // ms
-const long REVERSE_PERIOD_VARIANCE = 2500; // ms
-
-void loop() {
-  static bool reverse = true;
+  static bool reverseMode = false;
+  static bool reverse = false;
   static long nextSwitch = 0;
-  
+  static long buttonDownMillis = 0;
+  static bool buttonStateOld = false;
+
   // Get button state
   int buttonState = !digitalRead(BUTTON_PIN);
+
+  if(buttonStateOld == false && buttonState == true) {
+    buttonDownMillis = millis();
+  }
+
+  if(buttonState == false) {
+    buttonDownMillis = 0;
+  }
+
+  if(buttonState == true && buttonDownMillis != 0 && buttonDownMillis + 5000 < millis()) {
+    reverseMode = !reverseMode; 
+    buttonDownMillis = 0;
+  }
+
+  buttonStateOld = buttonState;
 
   // Get calibrated accelerometer values
   float x, y, z;
@@ -235,34 +214,42 @@ void loop() {
   bool playing = is_in_playing_position(y, z);
 
   if(playing) {
-    if(nextSwitch < millis()) {
-      if(reverse) {
+    if(reverseMode) {
+      if(buttonState) {
         nextSwitch = millis() + NORMAL_PERIOD + random(-NORMAL_PERIOD_VARIANCE, NORMAL_PERIOD_VARIANCE);
-      } else {
-        nextSwitch = millis() + REVERSE_PERIOD + random(-REVERSE_PERIOD_VARIANCE, REVERSE_PERIOD_VARIANCE);
+        reverse = false;
       }
-      reverse = !reverse;
-      Serial.println(nextSwitch);
-    }
+      
+      if(nextSwitch < millis()) {
+        if(reverse) {
+          nextSwitch = millis() + NORMAL_PERIOD + random(-NORMAL_PERIOD_VARIANCE, NORMAL_PERIOD_VARIANCE);
+        } else {
+          nextSwitch = millis() + REVERSE_PERIOD + random(-REVERSE_PERIOD_VARIANCE, REVERSE_PERIOD_VARIANCE);
+        }
+        reverse = !reverse;
+      }
 
-    if(reverse) {
-      blink_random();
-      angle *= -1;
+      if(reverse) {
+        blink_random();
+        angle *= -1;
+      } else {
+        set_all_leds(HIGH);
+      }
+    
     } else {
-      set_all_leds(HIGH);
+      if(abs(angle) > 0.2) {
+        blink_in_direction(angle);
+      } else {
+        set_all_leds(HIGH);
+      }
     }
-
+    
     // Set gamepad axis:
     gp.setLeftXaxis(angle * 127.0);
   } else {
     set_all_leds(LOW);
   }
 
-  if(buttonState) {
-    nextSwitch = millis() + NORMAL_PERIOD + random(-NORMAL_PERIOD_VARIANCE, NORMAL_PERIOD_VARIANCE);
-    reverse = false;
-  }
-
   // Set gamepad button
   gp.setButtonState(0, buttonState);
-}*/
+}
