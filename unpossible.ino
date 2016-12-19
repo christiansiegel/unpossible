@@ -1,6 +1,7 @@
 #include <SparkFun_ADXL345.h>
 #include <Keyboard.h>
 #include <Gamepad.h>
+#include <SoftPWM.h>
 
 constexpr float PLAY_ANGLE_FULL_LOCK = 60.0 / 180.0;  // ±60° is full lock 
 
@@ -25,8 +26,12 @@ ADXL345 adxl = ADXL345(10);
 Gamepad gp;
 
 void setup() {
+  Serial.begin(9600); 
+  Keyboard.begin();
+  
   setup_gpios();
   setup_accelerometer();
+  randomSeed(analogRead(A1));
 }
 
 void setup_accelerometer() {
@@ -37,17 +42,33 @@ void setup_accelerometer() {
 
 void setup_gpios() {
   pinMode(BUTTON_PIN, INPUT_PULLUP);
+
+  SoftPWMBegin(SOFTPWM_NORMAL);
   
-  pinMode(LED_TOP_FAR_LEFT, OUTPUT);
-  pinMode(LED_TOP_LEFT, OUTPUT);
-  pinMode(LED_BOTTOM_FAR_LEFT, OUTPUT);
-  pinMode(LED_BOTTOM_LEFT, OUTPUT);
-  pinMode(LED_TOP_FAR_RIGHT, OUTPUT);
-  pinMode(LED_TOP_RIGHT, OUTPUT);
-  pinMode(LED_BOTTOM_FAR_RIGHT, OUTPUT);
-  pinMode(LED_BOTTOM_RIGHT, OUTPUT);
-  pinMode(LED_CENTER_LEFT, OUTPUT);
-  pinMode(LED_CENTER_RIGHT, OUTPUT);
+  SoftPWMSet(LED_TOP_FAR_LEFT, 0);
+  SoftPWMSet(LED_TOP_LEFT, 0);
+  SoftPWMSet(LED_BOTTOM_FAR_LEFT, 0);
+  SoftPWMSet(LED_BOTTOM_LEFT, 0);
+  SoftPWMSet(LED_TOP_FAR_RIGHT, 0);
+  SoftPWMSet(LED_TOP_RIGHT, 0);
+  SoftPWMSet(LED_BOTTOM_FAR_RIGHT, 0);
+  SoftPWMSet(LED_BOTTOM_RIGHT, 0);
+  SoftPWMSet(LED_CENTER_LEFT, 0);
+  SoftPWMSet(LED_CENTER_RIGHT, 0);
+
+  int fadeUpTime = 50;
+  int fadeDownTime = 100;
+  
+  SoftPWMSetFadeTime(LED_TOP_FAR_LEFT, fadeUpTime, fadeDownTime);
+  SoftPWMSetFadeTime(LED_TOP_LEFT, fadeUpTime, fadeDownTime);
+  SoftPWMSetFadeTime(LED_BOTTOM_FAR_LEFT, fadeUpTime, fadeDownTime);
+  SoftPWMSetFadeTime(LED_BOTTOM_LEFT, fadeUpTime, fadeDownTime);
+  SoftPWMSetFadeTime(LED_TOP_FAR_RIGHT, fadeUpTime, fadeDownTime);
+  SoftPWMSetFadeTime(LED_TOP_RIGHT, fadeUpTime, fadeDownTime);
+  SoftPWMSetFadeTime(LED_BOTTOM_FAR_RIGHT, fadeUpTime, fadeDownTime);
+  SoftPWMSetFadeTime(LED_BOTTOM_RIGHT, fadeUpTime, fadeDownTime);
+  SoftPWMSetFadeTime(LED_CENTER_LEFT, fadeUpTime, fadeDownTime);
+  SoftPWMSetFadeTime(LED_CENTER_RIGHT, fadeUpTime, fadeDownTime);
 }
 
 void read_accelerometer_calibrated(float &x_val, float &y_val, float &z_val) {
@@ -56,7 +77,7 @@ void read_accelerometer_calibrated(float &x_val, float &y_val, float &z_val) {
   adxl.readAccel(&x, &y, &z);
 
   // Calibrate values
-  x_val = (x - 20)/33.5; //-2.5
+  x_val = (x - 2.5)/33.5; //-2.5
   y_val = (y - 0.0)/34.0;
   z_val = (z + 4.0)/32.0;
 }
@@ -94,40 +115,64 @@ void blink_in_direction(float angle) {
     else {
       if(++row > 4) row = 0;
     }
+    
+    SoftPWMSet(LED_TOP_FAR_LEFT, row == 0 ? 255 : 0);
+    SoftPWMSet(LED_BOTTOM_FAR_LEFT, row == 0 ? 255 : 0);
+    
+    SoftPWMSet(LED_TOP_LEFT, row == 1 ? 255 : 0);
+    SoftPWMSet(LED_BOTTOM_LEFT, row == 1 ? 255 : 0);
   
-    digitalWrite(LED_TOP_FAR_LEFT, row == 0);
-    digitalWrite(LED_BOTTOM_FAR_LEFT, row == 0);
+    SoftPWMSet(LED_CENTER_LEFT, row == 2 ? 255 : 0);
+    SoftPWMSet(LED_CENTER_RIGHT, row == 2 ? 255 : 0);
     
-    digitalWrite(LED_TOP_LEFT, row == 1);
-    digitalWrite(LED_BOTTOM_LEFT, row == 1);
+    SoftPWMSet(LED_BOTTOM_RIGHT, row == 3 ? 255 : 0);
+    SoftPWMSet(LED_TOP_RIGHT, row == 3 ? 255 : 0);
   
-    digitalWrite(LED_CENTER_LEFT, row == 2);
-    digitalWrite(LED_CENTER_RIGHT, row == 2);
+    SoftPWMSet(LED_TOP_FAR_RIGHT, row == 4 ? 255 : 0);
+    SoftPWMSet(LED_BOTTOM_FAR_RIGHT, row == 4 ? 255 : 0);
+  }
+}
+
+void blink_random() {
+  static long lastIntervalMillis = 0;
+  if(lastIntervalMillis + 75 < millis()) {
+    lastIntervalMillis = millis();
+
+    int rnd = random(10);
+    SoftPWMSet(LED_TOP_FAR_LEFT, rnd == 0 ? 255 : 0);
+    SoftPWMSet(LED_BOTTOM_FAR_LEFT, rnd == 1 ? 255 : 0);
     
-    digitalWrite(LED_BOTTOM_RIGHT, row == 3);
-    digitalWrite(LED_TOP_RIGHT, row == 3);
+    SoftPWMSet(LED_TOP_LEFT, rnd == 2 ? 255 : 0);
+    SoftPWMSet(LED_BOTTOM_LEFT, rnd == 3 ? 255 : 0);
+  
+    SoftPWMSet(LED_CENTER_LEFT, rnd == 4 ? 255 : 0);
+    SoftPWMSet(LED_CENTER_RIGHT, rnd == 5 ? 255 : 0);
     
-    digitalWrite(LED_TOP_FAR_RIGHT, row == 4);
-    digitalWrite(LED_BOTTOM_FAR_RIGHT, row == 4);
+    SoftPWMSet(LED_BOTTOM_RIGHT, rnd == 6 ? 255 : 0);
+    SoftPWMSet(LED_TOP_RIGHT, rnd == 7 ? 255 : 0);
+  
+    SoftPWMSet(LED_TOP_FAR_RIGHT, rnd == 8 ? 255 : 0);
+    SoftPWMSet(LED_BOTTOM_FAR_RIGHT, rnd == 9 ? 255 : 0);
   }
 }
 
 void set_all_leds(boolean value) {
-  digitalWrite(LED_TOP_FAR_LEFT, value);
-  digitalWrite(LED_BOTTOM_FAR_LEFT, value);
+  SoftPWMSet(LED_TOP_FAR_LEFT, value ? 255 : 0);
+  SoftPWMSet(LED_BOTTOM_FAR_LEFT, value ? 255 : 0);
   
-  digitalWrite(LED_TOP_LEFT, value);
-  digitalWrite(LED_BOTTOM_LEFT, value);
+  SoftPWMSet(LED_TOP_LEFT, value ? 255 : 0);
+  SoftPWMSet(LED_BOTTOM_LEFT, value ? 255 : 0);
 
-  digitalWrite(LED_CENTER_LEFT, value);
-  digitalWrite(LED_CENTER_RIGHT, value);
+  SoftPWMSet(LED_CENTER_LEFT, value ? 255 : 0);
+  SoftPWMSet(LED_CENTER_RIGHT, value ? 255 : 0);
   
-  digitalWrite(LED_BOTTOM_RIGHT, value);
-  digitalWrite(LED_TOP_RIGHT, value);
+  SoftPWMSet(LED_BOTTOM_RIGHT, value ? 255 : 0);
+  SoftPWMSet(LED_TOP_RIGHT, value ? 255 : 0);
 
-  digitalWrite(LED_TOP_FAR_RIGHT, value);
-  digitalWrite(LED_BOTTOM_FAR_RIGHT, value);
+  SoftPWMSet(LED_TOP_FAR_RIGHT, value ? 255 : 0);
+  SoftPWMSet(LED_BOTTOM_FAR_RIGHT, value ? 255 : 0);
 }
+
 
 void loop() {
   // Get button state
@@ -149,11 +194,75 @@ void loop() {
     } else {
       set_all_leds(HIGH);
     }
+
+    // Set gamepad axis:
+    gp.setLeftXaxis(angle * 127.0);
   } else {
     set_all_leds(LOW);
   }
 
-  // Set gamepad values:
-  gp.setLeftXaxis(playing ? angle * -127.0 : 0);
+  // Set gamepad button
   gp.setButtonState(0, buttonState);
+
+  if(buttonState) 
+    Keyboard.press(KEY_RETURN);
+  else
+    Keyboard.releaseAll();
 }
+
+/*
+const long NORMAL_PERIOD = 10000; // ms
+const long NORMAL_PERIOD_VARIANCE = 5000; // ms 
+
+const long REVERSE_PERIOD = 5000; // ms
+const long REVERSE_PERIOD_VARIANCE = 2500; // ms
+
+void loop() {
+  static bool reverse = true;
+  static long nextSwitch = 0;
+  
+  // Get button state
+  int buttonState = !digitalRead(BUTTON_PIN);
+
+  // Get calibrated accelerometer values
+  float x, y, z;
+  read_accelerometer_calibrated(x, y, z);
+
+  // Get controller steering angle
+  float angle = get_steering_angle(x, y); 
+
+  // Get if controller is in playing position and not just lying around
+  bool playing = is_in_playing_position(y, z);
+
+  if(playing) {
+    if(nextSwitch < millis()) {
+      if(reverse) {
+        nextSwitch = millis() + NORMAL_PERIOD + random(-NORMAL_PERIOD_VARIANCE, NORMAL_PERIOD_VARIANCE);
+      } else {
+        nextSwitch = millis() + REVERSE_PERIOD + random(-REVERSE_PERIOD_VARIANCE, REVERSE_PERIOD_VARIANCE);
+      }
+      reverse = !reverse;
+      Serial.println(nextSwitch);
+    }
+
+    if(reverse) {
+      blink_random();
+      angle *= -1;
+    } else {
+      set_all_leds(HIGH);
+    }
+
+    // Set gamepad axis:
+    gp.setLeftXaxis(angle * 127.0);
+  } else {
+    set_all_leds(LOW);
+  }
+
+  if(buttonState) {
+    nextSwitch = millis() + NORMAL_PERIOD + random(-NORMAL_PERIOD_VARIANCE, NORMAL_PERIOD_VARIANCE);
+    reverse = false;
+  }
+
+  // Set gamepad button
+  gp.setButtonState(0, buttonState);
+}*/
